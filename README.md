@@ -1,8 +1,12 @@
 # homebridge-roku-client
 
-Control your Roku media player from your iOS devices using apple's HomeKit. See [homebridge](https://github.com/nfarina/homebridge) for more information controlling 3rd party devices through HomeKit.
+Control your Roku media player from your iOS devices using apple's HomeKit. See [homebridge](https://github.com/nfarina/homebridge) for more information controlling 3rd party devices through HomeKit.  Please note that most of this work is based on good work from the original [homebridge-roku](https://github.com/bschlenk/homebridge-roku).
 
-Please note that most of this work is based on good work from the original [homebridge-roku](https://github.com/bschlenk/homebridge-roku). This plugin supports multiple Roku's on the same network and provides the option to filter channels and enable/disable navigation buttons.
+## Basic Features
+The homebridge-roku-client plugin features:
+* Support for multiple Roku's on the same network
+* the option to filter channels
+* the ability to enable/disable navigation buttons.
 
 ## Installation
 
