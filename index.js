@@ -132,8 +132,8 @@ function initializeRokuAccessory() {
             .on('set', (value, callback) => {
                 this.buttons[button] = value;
                 this.client.keypress(command)
-                    .then(() => callback(null, false)
-                        .catch(callback);
+                    .then(() => callback(null, false))
+                    .catch(callback);
             });
 
         this.addService(keyService);
