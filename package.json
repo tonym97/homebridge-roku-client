@@ -1,15 +1,10 @@
 {
     "name": "homebridge-roku-client",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Control Roku media players through homebridge",
     "main": "index.js",
     "scripts": {
-        "lint": "eslint index.js",
-        "test": "npm run lint && jest",
-        "test:watch": "jest --watch",
-        "coverage": "jest --coverage",
-        "start": "homebridge -D -U . -P .",
-        "prepublishOnly": "npm run test"
+        "start": "homebridge -D -U . -P ."
     },
     "repository": {
         "type": "git",
@@ -21,19 +16,12 @@
         "homekit",
         "homebridge-plugin"
     ],
-    "author": "Tony Mongkolsmai <tonym97@gmail.com>",
+    "author": "Tony Mongkolsmai <tony.mongkolsmai@gmail.com>",
     "license": "MIT",
     "bugs": {
         "url": "https://github.com/tonym97/homebridge-roku-client/issues"
     },
     "homepage": "https://github.com/tonym97/homebridge-roku-client#readme",
-    "devDependencies": {
-        "@types/jest": "^21.1.9",
-        "eslint": "^4.13.1",
-        "eslint-config-airbnb-base": "^12.1.0",
-        "eslint-plugin-import": "^2.8.0",
-        "jest": "^21.2.1"
-    },
     "dependencies": {
         "roku-client": "^1.2.2"
     },

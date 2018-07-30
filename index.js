@@ -36,16 +36,18 @@ function RokuAccessory(accessoryDesc) {
 
     if (!accessoryDesc.disableNavigationButtons) {
         self.setupButton(keys.POWER);
-        self.setupButton(keys.HOME);
-        self.setupButton(keys.REVERSE);
-        self.setupButton(keys.PLAY, "PAUSE");
+        self.setupButton(keys.HOME, "HOME SCREEN");
+        self.setupButton(keys.INFO, "OPTIONS");
+        self.setupButton(keys.REVERSE, 'REWIND');
+        self.setupButton(keys.PLAY, 'PAUSE');
         self.setupButton(keys.PLAY);
+        self.setupButton(keys.FORWARD, 'FAST FORWARD');
         self.setupButton(keys.LEFT);
         self.setupButton(keys.RIGHT);
         self.setupButton(keys.UP);
         self.setupButton(keys.DOWN);
         self.setupButton(keys.BACK);
-        self.setupButton(keys.INFO);
+        self.setupButton(keys.ENTER);
         self.setupMute();
         self.setupVolumeUp();
         self.setupVolumeDown();
@@ -121,14 +123,17 @@ function initializeRokuAccessory() {
         }
         const keyService = new Service.Switch(button, button);
 
+        // for now all these switches always look off because I don't have time to do
+        // smarter remote control logic and there is no way to query the roku to determine
+        // the play/pause/fast forward/rewind states
         keyService
             .getCharacteristic(Characteristic.On)
-            .on('get', callback => callback(null, this.buttons[button]))
+            .on('get', callback => callback(null, false))
             .on('set', (value, callback) => {
                 this.buttons[button] = value;
                 this.client.keypress(command)
-                    .then(() => callback(null))
-                    .catch(callback);
+                    .then(() => callback(null, false)
+                        .catch(callback);
             });
 
         this.addService(keyService);
@@ -258,7 +263,7 @@ function RokuPlatform(log, config, api) {
         // Save the API object as plugin needs to register new accessory via this object
         this.api = api;
 
-        // Listen to event "didFinishLaunching", this means homebridge already finished loading cached accessories.
+        // Listen to event 'didFinishLaunching', this means homebridge already finished loading cached accessories.
         // Platform Plugin should only register new accessory that doesn't exist in homebridge after this event.
         // Or start discover new accessories.
         this.api.on('didFinishLaunching', function () {
@@ -310,8 +315,8 @@ RokuPlatform.prototype.addAccessory = function (device) {
 
 // Sample function to show how developer can remove accessory dynamically from outside event
 RokuPlatform.prototype.removeAccessory = function () {
-    this.log("Remove Accessory");
-    this.api.unregisterPlatformAccessories("homebridge-samplePlatform", "SamplePlatform", this.accessories);
+    this.log('Remove Accessory');
+    this.api.unregisterPlatformAccessories('homebridge-samplePlatform', 'SamplePlatform', this.accessories);
 
     this.accessories = {};
 }
