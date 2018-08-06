@@ -12,56 +12,53 @@ module.exports = function (homebridge) {
     homebridge.registerPlatform('homebridge-roku2', 'RokuHomebridge', RokuPlatform, true);
 }
 
-function RokuAccessory(accessoryDesc) {
-    let UUID = UUIDGen.generate(accessoryDesc.info.serialNumber);
-    PlatformAccessory.call(this, accessoryDesc.info.defaultDeviceName, UUID);
+function _bindServices(accessory, accessoryDesc) {
+    accessory.client = accessoryDesc.client;
+    accessory.rokuDevice = accessoryDesc;
+    accessory.channels = [];
+    accessory.buttons = {};
 
-    let self = this;
-    self.client = accessoryDesc.client;
-    self.rokuDevice = accessoryDesc;
-    self.channels = [];
-    this.buttons = {};
-
-    self.on('identify', function (paired, callback) {
+    accessory.on('identify', function (paired, callback) {
         callback();
     });
 
-    self.getService(Service.AccessoryInformation)
+    accessory.getService(Service.AccessoryInformation)
         .setCharacteristic(Characteristic.Manufacturer, accessoryDesc.info.vendorName)
         .setCharacteristic(Characteristic.Model, accessoryDesc.info.modelName)
         .setCharacteristic(Characteristic.Name, accessoryDesc.info.userDeviceName)
         .setCharacteristic(Characteristic.SerialNumber, accessoryDesc.info.serialNumber);
 
-    self.reachable = true;
+    accessory.reachable = true;
 
     if (!accessoryDesc.disableNavigationButtons) {
-        self.setupButton(keys.POWER);
-        self.setupButton(keys.HOME, "HOME SCREEN");
-        self.setupButton(keys.INFO, "OPTIONS");
-        self.setupButton(keys.REVERSE, 'REWIND');
-        self.setupButton(keys.PLAY, 'PAUSE');
-        self.setupButton(keys.PLAY);
-        self.setupButton(keys.FORWARD, 'FAST FORWARD');
-        self.setupButton(keys.LEFT);
-        self.setupButton(keys.RIGHT);
-        self.setupButton(keys.UP);
-        self.setupButton(keys.DOWN);
-        self.setupButton(keys.BACK);
-        self.setupButton(keys.ENTER);
-        self.setupMute();
-        self.setupVolumeUp();
-        self.setupVolumeDown();
+        accessory.setupButton(keys.POWER);
+        accessory.setupButton(keys.HOME, "HOME SCREEN");
+        accessory.setupButton(keys.INFO, "OPTIONS");
+        accessory.setupButton(keys.REVERSE, 'REWIND');
+        accessory.setupButton(keys.PLAY, 'PAUSE');
+        accessory.setupButton(keys.PLAY);
+        accessory.setupButton(keys.FORWARD, 'FAST FORWARD');
+        accessory.setupButton(keys.LEFT);
+        accessory.setupButton(keys.RIGHT);
+        accessory.setupButton(keys.UP);
+        accessory.setupButton(keys.DOWN);
+        accessory.setupButton(keys.BACK);
+        accessory.setupButton(keys.ENTER);
+        accessory.setupMute();
+        accessory.setupVolumeUp();
+        accessory.setupVolumeDown();
     }
 
-    self.setupChannels(accessoryDesc);
+    accessory.setupChannels(accessoryDesc);
 }
 
-function initializeRokuAccessory() {
-    // extend from parent class prototype
-    RokuAccessory.prototype = Object.create(PlatformAccessory.prototype); // keeps the proto clean
-    RokuAccessory.prototype.constructor = RokuAccessory; // repair the inherited constructor
-    RokuAccessory.prototype.setupChannel = function (rokuId, name, id) {
-        const channel = new Service.Switch(name, name);
+function _bindToAccessory(rokuAccessory) {
+    rokuAccessory.setupChannel = function (rokuId, name, id) {
+        let channel = this.getService(name);
+        if (!channel) {
+            channel = new Service.Switch(name, name);
+            this.addService(channel);
+        }
 
         this.channels.push(channel);
         let self = this;
@@ -85,7 +82,7 @@ function initializeRokuAccessory() {
                             // but being lazy
                             self.channels.forEach(function (channel) {
                                 if (channel.displayName !== name) {
-                                    channel.getCharacteristic(Characteristic.On).setValue(false, null, true);
+                                    channel.getCharacteristic(Characteristic.On).updateValue(false);
                                 }
                             });
                         })
@@ -99,29 +96,32 @@ function initializeRokuAccessory() {
         this.client.active()
             .then((app) => {
                 if (app !== null) {
-                    channel.getCharacteristic(Characteristic.On).setValue(app.id === id, null, true);
+                    channel.getCharacteristic(Characteristic.On).updateValue(app.id === id);
                 }
-                channel.getCharacteristic(Characteristic.On).setValue(false, null, true);
+                channel.getCharacteristic(Characteristic.On).updateValue(false);
             }, () => {
-                channel.getCharacteristic(Characteristic.On).setValue(false, null, true);
+                channel.getCharacteristic(Characteristic.On).updateValue(false);
             });
 
         return channel;
     }
 
-    RokuAccessory.prototype.setupChannels = function (accessoryDesc) {
+    rokuAccessory.setupChannels = function (accessoryDesc) {
         let self = this;
         accessoryDesc.apps.forEach((app) => {
-            self.addService(
-                self.setupChannel(accessoryDesc.info.defaultDeviceName, app.name, app.id));
-        })
+            self.setupChannel(accessoryDesc.info.defaultDeviceName, app.name, app.id);
+        });
     }
 
-    RokuAccessory.prototype.setupButton = function (command, button) {
+    rokuAccessory.setupButton = function (command, button) {
         if (!button) {
             button = command;
         }
-        const keyService = new Service.Switch(button, button);
+        let keyService = this.getService(button);
+        if (!keyService) {
+            keyService = new Service.Switch(button, button);
+            this.addService(keyService);
+        }
 
         // for now all these switches always look off because I don't have time to do
         // smarter remote control logic and there is no way to query the roku to determine
@@ -135,14 +135,15 @@ function initializeRokuAccessory() {
                     .then(() => callback(null, false))
                     .catch(callback);
             });
-
-        this.addService(keyService);
     }
 
-    RokuAccessory.prototype.setupMute = function () {
+    rokuAccessory.setupMute = function () {
         // Speaker seems to be unsupported, emmulating with a switch
-        const mute = new Service.Switch(`Mute`, 'Mute');
-
+        let mute = this.getService('Mute');
+        if (!mute) {
+            mute = new Service.Switch('Mute', 'Mute');
+            this.addService(mute);
+        }
         mute
             .getCharacteristic(Characteristic.On)
             .on('get', callback => callback(null, this.muted))
@@ -162,21 +163,22 @@ function initializeRokuAccessory() {
                     .then(() => callback(null))
                     .catch(callback);
             });
-
-        this.addService(mute);
     }
 
-    RokuAccessory.prototype.setupVolumeUp = function () {
+    rokuAccessory.setupVolumeUp = function () {
         return this.setupVolume(keys.VOLUME_UP);
     }
 
-    RokuAccessory.prototype.setupVolumeDown = function () {
+    rokuAccessory.setupVolumeDown = function () {
         return this.setupVolume(keys.VOLUME_DOWN);
     }
 
-    RokuAccessory.prototype.setupVolume = function (key) {
-        const volume = new Service.Switch(key, key);
-
+    rokuAccessory.setupVolume = function (key) {
+        let volume = this.getService(key);
+        if (!volume) {
+            volume = new Service.Switch(key, key);
+            this.addService(volume);
+        }
         volume
             .getCharacteristic(Characteristic.On)
             .on('get', callback => callback(null, false))
@@ -187,12 +189,10 @@ function initializeRokuAccessory() {
                     .then(() => callback(null, false))
                     .catch(callback);
             });
-
-        this.addService(volume);
     }
 }
 
-RokuAccessory.initializeRoku = function (device) {
+function _initializeRokuConnection(device) {
     return new Promise((resolve, reject) => {
         let rokuClient = new Client(`http://${device.ipAddress}:8060`);
         rokuClient.info()
@@ -218,16 +218,16 @@ RokuAccessory.initializeRoku = function (device) {
                     resolve(accessoryDesc);
                 }, (error) => {
                     console.log('Roku Application Discovery Failed')
+                    reject();
                 });
             }, (error) => {
-                console.log('Roku Info Query Failed')
+                console.log(`Roku Info Query Failed: ${device.ipAddress}`)
+                reject();
             });
     });
 }
 
 function RokuPlatform(log, config, api) {
-    initializeRokuAccessory();
-
     let platform = this;
 
     this.log = log;
@@ -236,17 +236,18 @@ function RokuPlatform(log, config, api) {
 
     discover(1000, true).then((addresses) => {
         platform.log('Found Roku Devices at the following IP Addresses: ', addresses);
-        let devices = platform.config.devices ? platform.config.devices : [];
+        let devices = platform.config ? platform.config.devices ? platform.config.devices : [] : [];
         addresses.forEach((address) => {
             let missingDevice = true;
             devices.forEach((device) => {
-                if (addresses === device.ipAddress) {
+                if (address.indexOf(device.ipAddress) != -1) {
                     missingDevice = false;
                 }
             });
             if (missingDevice) {
+                let ipAddress = address.substring(7, address.lastIndexOf(':'));
                 devices.push({
-                    ipAddress: address
+                    ipAddress: ipAddress
                 })
             }
         });
@@ -294,18 +295,26 @@ RokuPlatform.prototype.configureAccessory = function (accessory) {
 RokuPlatform.prototype.addAccessory = function (device) {
     let platform = this;
 
-    RokuAccessory.initializeRoku(device).then((accessoryDesc) => {
+    _initializeRokuConnection(device).then((accessoryDesc) => {
         let UUID = UUIDGen.generate(accessoryDesc.info.serialNumber);
 
-        let accessory = new RokuAccessory(accessoryDesc);
+        let accessory;
+        if (platform.accessories[UUID]) {
+            accessory = platform.accessories[UUID];
+        } else {
+            accessory = new PlatformAccessory(accessoryDesc.info.defaultDeviceName, UUID);
+        }
+
+        _bindToAccessory(accessory); // adds in some helper functions
+        _bindServices(accessory, accessoryDesc);
 
         // Store accessory in cache
         if (!platform.accessories[UUID]) {
             // Register new accessory in HomeKit
             platform.api.registerPlatformAccessories('homebridge-roku2', 'RokuHomebridge', [accessory]);
-            platform.log(`Completed Add Accessory: ${accessoryDesc.info.serialNumber}`);
+            platform.accessories[UUID] = accessory;
         }
-        platform.accessories[UUID] = accessory;
+        platform.log(`Completed Add Accessory: ${accessoryDesc.info.serialNumber}`);
 
         return;
     }, (error) => {
