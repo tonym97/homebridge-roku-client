@@ -18,10 +18,6 @@ function _bindServices(accessory, accessoryDesc) {
     accessory.channels = [];
     accessory.buttons = {};
 
-    accessory.on('identify', function (paired, callback) {
-        callback();
-    });
-
     accessory.getService(Service.AccessoryInformation)
         .setCharacteristic(Characteristic.Manufacturer, accessoryDesc.info.vendorName)
         .setCharacteristic(Characteristic.Model, accessoryDesc.info.modelName)
